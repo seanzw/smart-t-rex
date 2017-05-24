@@ -1,0 +1,367 @@
+function QLearner(typeConfig) {
+    this.type = typeConfig;
+    // Intialize the q-value table.
+    this.table = new Array(this.type.states);
+    for (var i = 0; i < this.type.states; ++i) {
+        this.table[i] = new Array(this.type.actions);
+        for (var j = 0; j < this.type.actions; ++j) {
+            this.table[i][j] = 0.0;
+        }
+    }
+    this.iter = 0;
+    this.history = {
+        action: QLearner.actions.NOTHING,
+        state: 0
+    };
+    return this;
+};
+
+/**
+ * All the possible actions.
+ * @enum {string}
+ */
+QLearner.actions = {
+    NOTHING: 0,
+    JUMP: 1,
+    DUCK: 2
+};
+
+QLearner.types = {
+    /**
+     * This Q-Learner only uses the information of the first obstacle.
+     * It contains four numbers:
+     * xPos: divided by the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
+     * yPos: divided by the canvas height and quantified at 0.1 step.
+     * width: divided by HALF the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
+     * height:
+     * Notice that state 0 is used for no obstacles.
+     */
+    SingleObstacle: {
+        type: "singelObstacle",
+        states: 1001,
+        actions: 2,
+        alpha: 0.7,
+        gamma: 1.0,
+        /**
+         * Get the encoding of the current state.
+         * Return state in [0, states)
+         * @return {int}
+         */
+        get_state: function (runner) {
+            if (runner.horizon.obstacles.length == 0) {
+                // There is no obstacles.
+                return 0;
+            }
+            var clamp = function (x, a, b) {
+                return Math.min(Math.max(x, a), b);
+            };
+            var quantify = function (x, divider, timer, a, b) {
+                return clamp(
+                    Math.floor(x / divider * timer) - 1,
+                    a, b
+                );
+            };
+            var obstacle = runner.horizon.obstacles[0];
+            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 10, 0, 9);
+            var y = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
+            var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
+            // var h = quantify(obstacle.typeConfig.height, runner.dimensions.HEIGHT / 4, 10, 0, 9);
+            // var state = w * 1000 + h * 100 + y * 10 + x + 1;
+            var state = y * 100 + w * 10 + x + 1;
+            return state;
+        },
+        /**
+         * Get the reward of current state.
+         * @return {int}
+         */
+        get_reward: function (alive) {
+            if (alive) return 1;
+            else return -1000;
+        }
+    }
+};
+
+QLearner.prototype = {
+
+    /**
+     * Take the best action according to the current state.
+     * @return {state: int, action: string}
+     */
+    act: function (runner, reward) {
+        var state = this.type.get_state(runner);
+        var action = this.act_(state);
+        var result = {
+            state: state,
+            action: action
+        };
+        if (this.history.state != state) {
+            // This means we are still alive.
+            this.update_(this.history.state, this.history.action, reward, state);
+            this.iter++;
+            document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;
+            this.history = result;
+        }
+        if (this.iter % 100 == 0) {
+            this.dump_();
+        }
+
+        return result;
+    },
+
+    dump_: function () {
+        var csvContent = "data:text/csv;charset=utf-8,";
+        this.table.forEach(function (infoArray, index) {
+            dataString = infoArray.join(",");
+            csvContent += index < this.table.length ? dataString + "\n" : dataString;
+        }.bind(this));
+        var encodedUri = encodeURI(csvContent);
+        console.log(encodedUri);
+        window.open(encodedUri);
+    },
+
+    /**
+     * Take the best action of current state. Used internally.
+     * @return {int}
+     */
+    act_: function (state) {
+        var action = 0;
+        var q = this.table[state][0];
+        for (var i = 1; i < this.type.actions; ++i) {
+            console.log(q);
+            if (this.table[state][i] > q) {
+                q = this.table[state][i];
+                action = i;
+            }
+        }
+        return action;
+    },
+    /**
+     * Estimate the future value of state. Used internally.
+     * Just max_a(q(s, a), a).
+     * @return {float}
+     */
+    estimate_: function (state) {
+        var action = this.act_(state);
+        return this.table[state][action];
+    },
+    /**
+     * Update the Q-Table. Used internally.
+     * @return {void}
+     */
+    update_: function (state, action, reward, next_state) {
+        this.table[state][action] += this.type.alpha *
+            (reward + this.type.gamma * this.estimate_(next_state) - this.table[state][action]);
+    }
+};
+
+// This is a hand craft AI.
+function HandCraftAI() {
+    return this;
+};
+
+HandCraftAI.prototype = {
+    act: function(runner, reward) {
+        // Jump if necessary.
+        var result = {
+            state: null,
+            action: QLearner.actions.NOTHING
+        };
+        if (runner.horizon.obstacles.length > 0) {
+            var obstacle = runner.horizon.obstacles[0];
+            var x = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
+            var y = obstacle.yPos / runner.dimensions.HEIGHT;
+            console.log(y);
+            // console.log("x %f y %f", x, y);
+            var threshold = (runner.currentSpeed - 6) / 7 * 0.1 + 0.3;
+            if (x < threshold && y > 0.4) {
+                result.action = QLearner.actions.JUMP;
+            }
+        }
+        return result;
+    }
+};
+
+/**
+ * Extract the luminance from the rgb.
+ */
+function rgb2l(r, g, b) {
+    r /= 255, g /= 255, b /= 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var l = (max + min) / 2;
+    return l;
+};
+
+function DeepQLearner(dimensions, container) {
+    // Only show the image a quarter.
+    this.dimensions = dimensions;
+    this.canvas = null;
+    this.canvasCtx = null;
+
+    this.type = DeepQLearner.type.Continuous;
+
+    this.frames = 0;
+    this.iteration = 0;
+    this.previous_action = 0;
+
+    this.brain = null;
+    this.init(container);
+    return this;
+};
+
+DeepQLearner.Configure = {
+    WIDTH: 150,
+    HEIGHT: 37
+};
+
+DeepQLearner.type = {
+    Continuous: {
+        num_inputs: 1,
+        num_actions: 2,
+        temporal_window: 0,
+        getInput: function (runner) {
+            var input = new Array(1);
+            for (var i = 0; i < 3; ++i) {
+                if (runner.horizon.obstacles.length > i) {
+                    // Update the obstacles.
+                    var obstacle = runner.horizon.obstacles[i];
+                    input[i * 4 + 0] = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
+                    // input[i * 4 + 0] = obstacle.xPos / runner.dimensions.WIDTH;
+                    // input[i * 4 + 1] = obstacle.yPos / runner.dimensions.HEIGHT;
+                    // input[i * 4 + 2] = obstacle.width / runner.dimensions.WIDTH;
+                    // input[i * 4 + 3] = obstacle.typeConfig.height / runner.dimensions.HEIGHT;
+                } else {
+                    input[i * 4 + 0] = 1;
+                    // input[i * 4 + 1] = 1;
+                    // input[i * 4 + 2] = 1;
+                    // input[i * 4 + 3] = 1;
+                }
+            }
+            // input[12] = runner.tRex.yPos / runner.dimensions.HEIGHT;
+            return input;
+        },
+        layer_defs: [
+            { type: 'input', out_sx: 1, out_sy: 1, out_depth: 1 },
+            { type: 'fc', num_neurons: 32, activation: 'relu' },
+            { type: 'fc', num_neurons: 32, activation: 'relu' },
+            { type: 'regression', num_neurons: 2 }
+        ],
+    }
+};
+
+DeepQLearner.prototype = {
+    init: function (container) {
+
+        var w = DeepQLearner.Configure.WIDTH;
+        var h = DeepQLearner.Configure.HEIGHT;
+
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = w;
+        this.canvas.height = h;
+        container.appendChild(this.canvas);
+        this.canvasCtx = this.canvas.getContext('2d');
+
+        this.reward_canvas = document.createElement('canvas');
+        this.reward_canvas.width = 600;
+        this.reward_canvas.height = 150;
+        container.appendChild(this.reward_canvas);
+
+        this.value_canvas = document.createElement('canvas');
+        this.value_canvas.width = 600;
+        this.value_canvas.height = 150;
+        container.appendChild(this.value_canvas);
+
+        // options for the Temporal Difference learner that trains the above net
+        // by backpropping the temporal difference learning rule.
+        var tdtrainer_options = { learning_rate: 0.001, momentum: 0.0, batch_size: 64, l2_decay: 0.01 };
+
+        var opt = {};
+        opt.temporal_window = this.type.temporal_window;
+        opt.target_update_iteration = 5000;
+        opt.experience_size = 30000;
+        opt.start_learn_threshold = 1000;
+        opt.gamma = 0.99;
+        opt.learning_steps_total = 200000;
+        opt.learning_steps_burnin = 3000;
+        opt.epsilon_min = 0.01;
+        opt.epsilon_test_time = 0.00;
+        opt.layer_defs = this.type.layer_defs;
+        opt.tdtrainer_options = tdtrainer_options;
+        opt.random_action_distribution = [0.8, 0.2];
+
+        this.brain = new deepqlearn.Brain(this.type.num_inputs, this.type.num_actions, opt);
+        this.reward_graph = new cnnvis.Graph();
+    },
+
+    act: function (runner, reward) {
+        // this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // this.canvasCtx.drawImage(runner.canvas, 0, 0, this.canvas.width, this.canvas.height);
+        // // Get the resized data.
+        // var raw = this.canvasCtx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        // // Preprocess this frame.
+        // var frame = this.preprocess(raw);
+
+        // Get the action.
+        // Update for every 6 frames. Otherwise, repeat previous action.
+        var action = 0;
+        if (this.frames % 6 == 0 || reward < 0) {
+            // Notice that this is the reward for previous decision.
+            this.brain.backward(reward);
+            var input = this.type.getInput(runner);
+            action = this.brain.forward(input);
+            this.previous_action = action;
+            this.iteration++;
+        }
+        this.frames++;
+        if (this.frames > 100000) {
+            this.frames = 0;
+        }
+
+        if (this.iteration % 200 == 0) {
+            this.reward_graph.add(this.iteration / 200, this.brain.average_reward_window.get_average());
+            this.reward_graph.drawSelf(this.reward_canvas);
+        }
+
+        document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iteration;
+
+        this.brain.visSelf(document.getElementById("DQL-brain"));
+
+        // Some other visualization.
+        if (this.type.num_inputs == 1 && this.iteration % 200 == 0) {
+            var legend = ['not jumping', 'jumping'];
+            var opt = {
+                step_horizon: 1
+            };
+            var value_graph = new cnnvis.MultiGraph(legend, opt);
+            for (var input = 0.0; input <= 1.0; input += 0.01) {
+                var svol = new convnetjs.Vol(1, 1, 1);
+                svol.w = [input];
+                var action_values = this.brain.value_net.forward(svol);
+                value_graph.add(input, action_values.w);
+            }
+            value_graph.drawSelf(this.value_canvas);
+        }
+
+        return {
+            action: action,
+            state: input
+        };
+    },
+
+    /**
+     * Preprocess the frame. Extract the luminance channel.
+     */
+    preprocess: function (image) {
+        var n = image.width * image.height;
+        var lum = new Array(n);
+        for (var i = 0; i < n; i++) {
+            lum[i] = rgb2l(image.data[i * 4], image.data[i * 4 + 1], image.data[i * 4 + 2]);
+        }
+        return {
+            width: image.width,
+            height: image.height,
+            data: lum
+        };
+    }
+};
+
+
