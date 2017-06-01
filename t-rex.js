@@ -35,6 +35,10 @@
         // For q-learning.
         this.brain = null;
 
+        // Simulation seconds per frame.
+        // Used to control the simulation speed.
+        this.simulationSPF = 1000.0 / 60.0;
+
         this.distanceMeter = null;
         this.distanceRan = 0;
 
@@ -386,7 +390,9 @@
             // Initialize the deep q-learning.
             // this.brain = new DeepQLearner(this.dimensions, document.getElementById("DQL-show"));
             // Initialize the hand-craft AI.
-            this.brain = new HandCraftAI();
+            // this.brain = new HandCraftAI();
+            // Initialize the brain to human control.
+            this.brain = new Human();
 
             this.outerContainerEl.appendChild(this.containerEl);
 
@@ -532,6 +538,7 @@
 
             var now = getTimeStamp('update');
             var deltaTime = now - (this.time || now);
+            // console.log(deltaTime);
             this.time = now;
 
             if (this.playing) {
@@ -602,9 +609,9 @@
                 var playAchievementSound = this.distanceMeter.update(deltaTime,
                     Math.ceil(this.distanceRan));
 
-                // if (playAchievementSound) {
-                //     this.playSound(this.soundFx.SCORE);
-                // }
+                if (playAchievementSound) {
+                    this.playSound(this.soundFx.SCORE);
+                }
 
                 // Night mode.
                 if (this.invertTimer > this.config.INVERT_FADE_DURATION) {
@@ -788,9 +795,16 @@
         scheduleNextUpdate: function () {
             if (!this.updatePending) {
                 this.updatePending = true;
+                if (this.simulationSPF > 10) {
+                    // There is something wrong with setTimeout when
+                    // the time out is large.
+                    this.raqId = requestAnimationFrame(this.update.bind(this));
+                } else {
+                    setTimeout(this.update.bind(this), this.simulationSPF);
+                }
                 // this.raqId = requestAnimationFrame(this.update.bind(this));
                 // Start next frame immediately.
-                setTimeout(this.update.bind(this), 0);
+                // setTimeout(this.update.bind(this), 1000/60);
             }
         },
 
@@ -2763,6 +2777,85 @@
 
 function onDocumentLoad() {
     new Runner('.interstitial-wrapper');
-}
+    document.getElementById("loadInput").addEventListener('change', handleFileSelect, false);
+};
+
+function setSimulationSPF(SPF) {
+    Runner.instance_.simulationSPF = SPF;
+};
+
+setAgent.agents = {
+    HUMAN: 1,
+    HANDCRAFT: 2,
+    QLEARNER: 3,
+    DEEPQNET: 4
+};
+
+function setAgent(agent) {
+    var agent_panel = document.getElementById("agent-panel");
+    switch (agent) {
+        case setAgent.agents.HUMAN:
+            agent_panel.innerHTML = "Human";
+            Runner.instance_.brain = new Human();
+            break;
+        case setAgent.agents.QLEARNER:
+            agent_panel.innerHTML = "Q-Table";
+            Runner.instance_.brain = new QLearner(QLearner.types.SingleObstacle);
+            break;
+        case setAgent.agents.DEEPQNET:
+            agent_panel.innerHTML = "Deep-Q-Net";
+            Runner.instance_.brain = new DeepQLearner(Runner.instance_.dimensions, document.getElementById("leaner-show"));
+            break;
+        case setAgent.agents.HANDCRAFT:
+        default:
+            agent_panel.innerHTML = "Cheat";
+            Runner.instance_.brain = new HandCraftAI();
+            break;
+    }
+};
+
+function saveModel() {
+    var model = Runner.instance_.brain.dump();
+    if (model == null) {
+        window.alert("There is no model for this agent");
+        return;
+    }
+    var blob = new Blob([model.text], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, model.fn);
+};
+
+function handleFileSelect(evt) {
+    if (evt.target.files.length > 1) {
+        console.log("Please choose only one model at a time.");
+    }
+    var file = evt.target.files[0];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var model = reader.result;
+        console.log(model.length);
+        var feedback = Runner.instance_.brain.load(model);
+        if (feedback != true) {
+            window.alert(feedback);
+        }
+    };
+    reader.readAsText(file);
+};
+
+function loadModel() {
+    if (window.File && window.FileReader && window.FileList && window.Blob) {
+        // Great success! All the File APIs are supported.
+        // Ask the user to select a file.
+        document.getElementById("loadInput").click();
+    } else {
+        alert('The File APIs are not fully supported in this browser.');
+    }
+};
+
+function trainModel() {
+    var feedback = Runner.instance_.brain.train();
+    if (feedback != true) {
+        window.alert(feedback);
+    }
+};
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);

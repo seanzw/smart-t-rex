@@ -1,18 +1,45 @@
+// A dummy human agend which always do nothing.
+// Always do nothing to let the player take control.
+function Human() {
+    return this;
+};
+
+Human.prototype = {
+    /**
+     * Always do nothing.
+     * @return {state: int, action: string}
+     */
+    act: function (runner, reward) {
+        var result = {
+            state: -1,
+            action: QLearner.actions.NOTHING
+        };
+        return result;
+    },
+    dump: function () {
+        return null;
+    },
+    /**
+     * Do nothing.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    load: function (model) {
+        return "The model is in your mind!";
+    },
+    /**
+     * Do nothing.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    train: function () {
+        return "Do your own homework and learn by yourself!";
+    }
+};
+
 function QLearner(typeConfig) {
     this.type = typeConfig;
-    // Intialize the q-value table.
-    this.table = new Array(this.type.states);
-    for (var i = 0; i < this.type.states; ++i) {
-        this.table[i] = new Array(this.type.actions);
-        for (var j = 0; j < this.type.actions; ++j) {
-            this.table[i][j] = 0.0;
-        }
-    }
-    this.iter = 0;
-    this.history = {
-        action: QLearner.actions.NOTHING,
-        state: 0
-    };
+    this.train();
     return this;
 };
 
@@ -38,6 +65,7 @@ QLearner.types = {
      */
     SingleObstacle: {
         type: "singelObstacle",
+        total_iters: 1000,
         states: 1001,
         actions: 2,
         alpha: 0.7,
@@ -94,29 +122,77 @@ QLearner.prototype = {
             state: state,
             action: action
         };
-        if (this.history.state != state) {
-            // This means we are still alive.
+        // Update the Q table if we are still learning.
+        if (this.iter < this.type.total_iters && this.history.state != state) {
             this.update_(this.history.state, this.history.action, reward, state);
             this.iter++;
             document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;
             this.history = result;
         }
-        if (this.iter % 100 == 0) {
-            this.dump_();
-        }
-
         return result;
     },
 
-    dump_: function () {
-        var csvContent = "data:text/csv;charset=utf-8,";
+    /**
+     * Dump the table to a csv file.
+     * @return {string}
+     */
+    dump: function () {
+        var csvContent = "";
         this.table.forEach(function (infoArray, index) {
             dataString = infoArray.join(",");
             csvContent += index < this.table.length ? dataString + "\n" : dataString;
         }.bind(this));
-        var encodedUri = encodeURI(csvContent);
-        console.log(encodedUri);
-        window.open(encodedUri);
+        return { text: csvContent, fn: "q-table.csv" };
+    },
+
+    /**
+     * Load the model and stop learning by setting this.iter.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    load: function (model) {
+        // Stop training.
+        this.iter = this.type.total_iters;
+        // Load in the table.
+        var lines = model.split('\n');
+        if (lines.length != this.table.length) {
+            return "The number of states is not correct!";
+        }
+        for (var i = 0; i < this.table.length; ++i) {
+            var entries = lines[i].split(',');
+            if (entries.length != this.table.length) {
+                return "The number of entries is not correct!";
+            }
+            for (var j = 0; j < entries.length; ++j) {
+                this.table[i][j] = Number(entries[j]);
+            }
+        }
+        return true;
+    },
+
+    /**
+     * Reset the model and start training.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    train: function () {
+        // Stop the learning.
+        this.iter = this.type.total_iters;
+        // Intialize the q-value table.
+        this.table = new Array(this.type.states);
+        for (var i = 0; i < this.type.states; ++i) {
+            this.table[i] = new Array(this.type.actions);
+            for (var j = 0; j < this.type.actions; ++j) {
+                this.table[i][j] = 0.0;
+            }
+        }
+        this.history = {
+            action: QLearner.actions.NOTHING,
+            state: 0
+        };
+        // Restart the training.
+        this.iter = 0;
+        return true;
     },
 
     /**
@@ -160,7 +236,7 @@ function HandCraftAI() {
 };
 
 HandCraftAI.prototype = {
-    act: function(runner, reward) {
+    act: function (runner, reward) {
         // Jump if necessary.
         var result = {
             state: null,
@@ -172,12 +248,31 @@ HandCraftAI.prototype = {
             var y = obstacle.yPos / runner.dimensions.HEIGHT;
             console.log(y);
             // console.log("x %f y %f", x, y);
-            var threshold = (runner.currentSpeed - 6) / 7 * 0.1 + 0.3;
+            var threshold = (runner.currentSpeed - 6) / 7 * 0.1 + 0.2;
             if (x < threshold && y > 0.4) {
                 result.action = QLearner.actions.JUMP;
             }
         }
         return result;
+    },
+    dump: function () {
+        return null;
+    },
+    /**
+     * Do nothing.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    load: function (model) {
+        return "Sorry no cheat sheet!";
+    },
+    /**
+     * Do nothing.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    train: function () {
+        return "Sorry no cheat sheet!";
     }
 };
 
@@ -345,6 +440,27 @@ DeepQLearner.prototype = {
             action: action,
             state: input
         };
+    },
+
+    dump: function () {
+        return null;
+    },
+
+    /**
+     * Do nothing.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    load: function (model) {
+        return "Sorry no cheat sheet!";
+    },
+    /**
+     * Do nothing.
+     * @return {boolean/string}
+     * return true if succeed, or the reason if failed.
+     */
+    train: function () {
+        return "Sorry no cheat sheet!";
     },
 
     /**
