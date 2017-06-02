@@ -588,7 +588,11 @@
                             }
                             break;
                         case QLearner.actions.DUCK:
-                            //console.log("Duck at %d", act_result.state);
+                            // We only care about speed drop.
+                            if (this.tRex.jumping) {
+                                // Speed drop, activated only when jump key is not pressed.
+                                this.tRex.setSpeedDrop();
+                            }
                             break;
                         //setTimeout(this.tRex.start)
                         case QLearner.actions.NOTHING:
@@ -2800,7 +2804,7 @@ function setAgent(agent) {
             break;
         case setAgent.agents.QLEARNER:
             agent_panel.innerHTML = "Q-Table";
-            Runner.instance_.brain = new QLearner(QLearner.types.SingleObstacle);
+            Runner.instance_.brain = new QLearner(QLearner.types.SingleObstacleXHeight);
             break;
         case setAgent.agents.DEEPQNET:
             agent_panel.innerHTML = "Deep-Q-Net";
@@ -2848,13 +2852,6 @@ function loadModel() {
         document.getElementById("loadInput").click();
     } else {
         alert('The File APIs are not fully supported in this browser.');
-    }
-};
-
-function trainModel() {
-    var feedback = Runner.instance_.brain.train();
-    if (feedback != true) {
-        window.alert(feedback);
     }
 };
 

@@ -26,14 +26,6 @@ Human.prototype = {
      */
     load: function (model) {
         return "The model is in your mind!";
-    },
-    /**
-     * Do nothing.
-     * @return {boolean/string}
-     * return true if succeed, or the reason if failed.
-     */
-    train: function () {
-        return "Do your own homework and learn by yourself!";
     }
 };
 
@@ -53,7 +45,54 @@ QLearner.actions = {
     DUCK: 2
 };
 
+function clamp(x, a, b) {
+    return Math.min(Math.max(x, a), b);
+};
+function quantify(x, divider, timer, a, b) {
+    return clamp(
+        Math.floor(x / divider * timer) - 1,
+        a, b
+    );
+};
+
 QLearner.types = {
+    /**
+     * This Q-Learner only uses the information of the first obstacle.
+     * It contains four numbers:
+     * xPos: divided by the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
+     * yPos: divided by the canvas height and quantified at 0.1 step.
+     * width: divided by HALF the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
+     * height:
+     * Notice that the last state is used for no obstacles.
+     */
+    SingleObstacleXWidth: {
+        type: "singelObstacleXWidth",
+        total_iters: 1000,
+        states: 21,
+        actions: 2,
+        alpha: 0.7,
+        gamma: 1.0,
+        /**
+         * Get the encoding of the current state.
+         * Return state in [0, states)
+         * @return {int}
+         */
+        get_state: function (runner) {
+            if (runner.horizon.obstacles.length == 0) {
+                // There is no obstacles.
+                return 20;
+            }
+            var obstacle = runner.horizon.obstacles[0];
+            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
+            // var y = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
+            // var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
+            // var h = quantify(obstacle.typeConfig.height, runner.dimensions.HEIGHT / 4, 10, 0, 9);
+            // var state = w * 1000 + h * 100 + y * 10 + x + 1;
+            // var state = y * 100 + w * 10 + x + 1;
+            var state = x;
+            return state;
+        }
+    },
     /**
      * This Q-Learner only uses the information of the first obstacle.
      * It contains four numbers:
@@ -63,9 +102,9 @@ QLearner.types = {
      * height:
      * Notice that state 0 is used for no obstacles.
      */
-    SingleObstacle: {
-        type: "singelObstacle",
-        total_iters: 1000,
+    SingleObstacleXHeight: {
+        type: "singelObstacleXHeight",
+        total_iters: 10000,
         states: 1001,
         actions: 2,
         alpha: 0.7,
@@ -78,33 +117,14 @@ QLearner.types = {
         get_state: function (runner) {
             if (runner.horizon.obstacles.length == 0) {
                 // There is no obstacles.
-                return 0;
+                return 1000;
             }
-            var clamp = function (x, a, b) {
-                return Math.min(Math.max(x, a), b);
-            };
-            var quantify = function (x, divider, timer, a, b) {
-                return clamp(
-                    Math.floor(x / divider * timer) - 1,
-                    a, b
-                );
-            };
             var obstacle = runner.horizon.obstacles[0];
             var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 10, 0, 9);
             var y = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
             var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
-            // var h = quantify(obstacle.typeConfig.height, runner.dimensions.HEIGHT / 4, 10, 0, 9);
-            // var state = w * 1000 + h * 100 + y * 10 + x + 1;
             var state = y * 100 + w * 10 + x + 1;
             return state;
-        },
-        /**
-         * Get the reward of current state.
-         * @return {int}
-         */
-        get_reward: function (alive) {
-            if (alive) return 1;
-            else return -1000;
         }
     }
 };
@@ -123,7 +143,9 @@ QLearner.prototype = {
             action: action
         };
         // Update the Q table if we are still learning.
-        if (this.iter < this.type.total_iters && this.history.state != state) {
+        if (this.iter < this.type.total_iters && (this.history.state != state || reward < 0)) {
+            console.log(state);
+            console.log("reward %d", reward);
             this.update_(this.history.state, this.history.action, reward, state);
             this.iter++;
             document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;
@@ -155,12 +177,12 @@ QLearner.prototype = {
         this.iter = this.type.total_iters;
         // Load in the table.
         var lines = model.split('\n');
-        if (lines.length != this.table.length) {
+        if (lines.length < this.table.length) {
             return "The number of states is not correct!";
         }
         for (var i = 0; i < this.table.length; ++i) {
             var entries = lines[i].split(',');
-            if (entries.length != this.table.length) {
+            if (entries.length != this.table[i].length) {
                 return "The number of entries is not correct!";
             }
             for (var j = 0; j < entries.length; ++j) {
@@ -203,7 +225,6 @@ QLearner.prototype = {
         var action = 0;
         var q = this.table[state][0];
         for (var i = 1; i < this.type.actions; ++i) {
-            console.log(q);
             if (this.table[state][i] > q) {
                 q = this.table[state][i];
                 action = i;
@@ -264,14 +285,6 @@ HandCraftAI.prototype = {
      * return true if succeed, or the reason if failed.
      */
     load: function (model) {
-        return "Sorry no cheat sheet!";
-    },
-    /**
-     * Do nothing.
-     * @return {boolean/string}
-     * return true if succeed, or the reason if failed.
-     */
-    train: function () {
         return "Sorry no cheat sheet!";
     }
 };
@@ -443,24 +456,18 @@ DeepQLearner.prototype = {
     },
 
     dump: function () {
-        return null;
+        return this.brain.value_net.toJSON();
     },
 
     /**
-     * Do nothing.
+     * Load the model and stop learning.
      * @return {boolean/string}
      * return true if succeed, or the reason if failed.
      */
     load: function (model) {
-        return "Sorry no cheat sheet!";
-    },
-    /**
-     * Do nothing.
-     * @return {boolean/string}
-     * return true if succeed, or the reason if failed.
-     */
-    train: function () {
-        return "Sorry no cheat sheet!";
+        this.brain.value_net.fromJSON(model);
+        this.brain.learning = false;
+        return true;
     },
 
     /**
