@@ -67,12 +67,37 @@
                     </li>
                     <li class="nav-item">
                         <div class="dropdown">
-                            <a data-toggle="dropdown" class="nav-link" href="#">Agent</a>
+                            <a data-toggle="dropdown" class="nav-link" href="#">Human</a>
                             <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                                 <li class="nav-link" onclick="setAgent(setAgent.agents.HUMAN)">Human</li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="dropdown">
+                            <a data-toggle="dropdown" class="nav-link" href="#">Cheat</a>
+                            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                                 <li class="nav-link" onclick="setAgent(setAgent.agents.HANDCRAFT)">Cheat</li>
-                                <li class="nav-link" onclick="setAgent(setAgent.agents.QLEARNER)">Q-Table</li>
-                                <li class="nav-link" onclick="setAgent(setAgent.agents.DEEPQNET)">Deep-Q-Net</li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="dropdown">
+                            <a data-toggle="dropdown" class="nav-link" href="#">Q-Table</a>
+                            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+                                <li class="nav-link" 
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleX)">XPos</li>
+                                <li class="nav-link" 
+                                    onclick="setAgent(setAgent.agents.DEEPQNET, QLearner.types.SingleObstacleXYW)">XYPos+W</li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <div class="dropdown">
+                            <a data-toggle="dropdown" class="nav-link" href="#">Deep-Q-Net</a>
+                            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+                                <li class="nav-link" 
+                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleX)">XPos</li>
                             </ul>
                         </div>
                     </li>
@@ -83,8 +108,7 @@
                                 <li class="nav-link" onclick="saveModel()">Save</li>
                                 <li class="nav-link" onclick="loadModel()">
                                     Load
-                                    <input type="file" name="file" id="loadInput"
-                                        style="visibility:hidden;display:block;width:0;height:0;">
+                                    <input type="file" name="file" id="loadInput" style="visibility:hidden;display:block;width:0;height:0;">
                                 </li>
                             </ul>
                         </div>

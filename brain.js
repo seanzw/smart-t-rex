@@ -65,9 +65,9 @@ QLearner.types = {
      * height:
      * Notice that the last state is used for no obstacles.
      */
-    SingleObstacleXWidth: {
-        type: "singelObstacleXWidth",
-        total_iters: 1000,
+    SingleObstacleX: {
+        type: "singleObstacleX",
+        total_iters: 10000,
         states: 21,
         actions: 2,
         alpha: 0.7,
@@ -102,8 +102,8 @@ QLearner.types = {
      * height:
      * Notice that state 0 is used for no obstacles.
      */
-    SingleObstacleXHeight: {
-        type: "singelObstacleXHeight",
+    SingleObstacleXYW: {
+        type: "singleObstacleXYW",
         total_iters: 10000,
         states: 1001,
         actions: 2,
@@ -299,13 +299,13 @@ function rgb2l(r, g, b) {
     return l;
 };
 
-function DeepQLearner(dimensions, container) {
+function DeepQLearner(dimensions, container, type) {
     // Only show the image a quarter.
     this.dimensions = dimensions;
     this.canvas = null;
     this.canvasCtx = null;
 
-    this.type = DeepQLearner.type.Continuous;
+    this.type = type;
 
     this.frames = 0;
     this.iteration = 0;
@@ -321,38 +321,96 @@ DeepQLearner.Configure = {
     HEIGHT: 37
 };
 
-DeepQLearner.type = {
-    Continuous: {
+DeepQLearner.types = {
+    /**
+     * This neural network only take in the first obstacle's (xPos + width)
+     */
+    SingleObstacleX: {
         num_inputs: 1,
         num_actions: 2,
-        temporal_window: 0,
+        opt: {
+            temporal_window: 0,
+            target_update_iteration: 5000,
+            experience_size: 30000,
+            start_learn_threshold: 1000,
+            gamma: 0.99,
+            learning_steps_total: 200000,
+            learning_steps_burnin: 3000,
+            epsilon_min: 0.01,
+            epsilon_test_time: 0.00,
+            layer_defs: [
+                { type: 'input', out_sx: 1, out_sy: 1, out_depth: 1 },
+                { type: 'fc', num_neurons: 32, activation: 'relu' },
+                { type: 'fc', num_neurons: 32, activation: 'relu' },
+                { type: 'regression', num_neurons: 2 }
+            ],
+            tdtrainer_options: {
+                learning_rate: 0.001,
+                momentum: 0.0,
+                batch_size: 64,
+                l2_decay: 0.01
+            },
+            random_action_distribution: [0.8, 0.2]
+        },
         getInput: function (runner) {
             var input = new Array(1);
-            for (var i = 0; i < 3; ++i) {
-                if (runner.horizon.obstacles.length > i) {
-                    // Update the obstacles.
-                    var obstacle = runner.horizon.obstacles[i];
-                    input[i * 4 + 0] = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
-                    // input[i * 4 + 0] = obstacle.xPos / runner.dimensions.WIDTH;
-                    // input[i * 4 + 1] = obstacle.yPos / runner.dimensions.HEIGHT;
-                    // input[i * 4 + 2] = obstacle.width / runner.dimensions.WIDTH;
-                    // input[i * 4 + 3] = obstacle.typeConfig.height / runner.dimensions.HEIGHT;
-                } else {
-                    input[i * 4 + 0] = 1;
-                    // input[i * 4 + 1] = 1;
-                    // input[i * 4 + 2] = 1;
-                    // input[i * 4 + 3] = 1;
-                }
+            if (runner.horizon.obstacles.length > 0) {
+                // Update the obstacles.
+                var obstacle = runner.horizon.obstacles[0];
+                input[0] = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
+            } else {
+                input[0] = 1;
             }
-            // input[12] = runner.tRex.yPos / runner.dimensions.HEIGHT;
             return input;
+        }
+    },
+    SingleObstacleTRex: {
+        num_inputs: 5,
+        num_actions: 2,
+        opt: {
+            temporal_window: 0,
+            target_update_iteration: 5000,
+            experience_size: 30000,
+            start_learn_threshold: 1000,
+            gamma: 0.99,
+            learning_steps_total: 200000,
+            learning_steps_burnin: 3000,
+            epsilon_min: 0.01,
+            epsilon_test_time: 0.00,
+            layer_defs: [
+                { type: 'input', out_sx: 1, out_sy: 1, out_depth: 5 },
+                { type: 'fc', num_neurons: 32, activation: 'relu' },
+                { type: 'fc', num_neurons: 32, activation: 'relu' },
+                { type: 'regression', num_neurons: 2 }
+            ],
+            tdtrainer_options: {
+                learning_rate: 0.001,
+                momentum: 0.0,
+                batch_size: 64,
+                l2_decay: 0.01
+            },
+            random_action_distribution: [0.7, 0.2, 0.1]
         },
-        layer_defs: [
-            { type: 'input', out_sx: 1, out_sy: 1, out_depth: 1 },
-            { type: 'fc', num_neurons: 32, activation: 'relu' },
-            { type: 'fc', num_neurons: 32, activation: 'relu' },
-            { type: 'regression', num_neurons: 2 }
-        ],
+        getInput: function (runner) {
+            var input = new Array(5);
+            if (runner.horizon.obstacles.length > 0) {
+                // Update the obstacles.
+                var obstacle = runner.horizon.obstacles[0];
+                input[0] = (obstacle.xPos) / runner.dimensions.WIDTH;
+                input[1] = (obstacle.yPos) / runner.dimensions.HEIGHT;
+                input[2] = (obstacle.width) / runner.dimensions.WIDTH;
+            } else {
+                input[0] = 1;
+                input[1] = 1;
+                input[2] = 1;
+            }
+            input[3] = runner.tRex.yPos / runner.dimensions.HEIGHT;
+            input[4] = runner.tRex.jumpVelocity;
+            if (runner.tRex.speedDrop) {
+                input[4] *= runner.tRex.config.SPEED_DROP_COEFFICIENT;
+            }
+            return input;
+        }
     }
 };
 
@@ -378,25 +436,7 @@ DeepQLearner.prototype = {
         this.value_canvas.height = 150;
         container.appendChild(this.value_canvas);
 
-        // options for the Temporal Difference learner that trains the above net
-        // by backpropping the temporal difference learning rule.
-        var tdtrainer_options = { learning_rate: 0.001, momentum: 0.0, batch_size: 64, l2_decay: 0.01 };
-
-        var opt = {};
-        opt.temporal_window = this.type.temporal_window;
-        opt.target_update_iteration = 5000;
-        opt.experience_size = 30000;
-        opt.start_learn_threshold = 1000;
-        opt.gamma = 0.99;
-        opt.learning_steps_total = 200000;
-        opt.learning_steps_burnin = 3000;
-        opt.epsilon_min = 0.01;
-        opt.epsilon_test_time = 0.00;
-        opt.layer_defs = this.type.layer_defs;
-        opt.tdtrainer_options = tdtrainer_options;
-        opt.random_action_distribution = [0.8, 0.2];
-
-        this.brain = new deepqlearn.Brain(this.type.num_inputs, this.type.num_actions, opt);
+        this.brain = new deepqlearn.Brain(this.type.num_inputs, this.type.num_actions, this.type.opt);
         this.reward_graph = new cnnvis.Graph();
     },
 

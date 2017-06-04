@@ -1736,7 +1736,7 @@
             // Speed drop becomes duck if the down key is still being pressed.
             if (this.speedDrop && this.yPos == this.groundYPos) {
                 this.speedDrop = false;
-                this.setDuck(true);
+                // this.setDuck(true);
             }
         },
 
@@ -2782,6 +2782,31 @@
 function onDocumentLoad() {
     new Runner('.interstitial-wrapper');
     document.getElementById("loadInput").addEventListener('change', handleFileSelect, false);
+
+    // // save in another property
+    // Runner.instance_.tRex._xPos = Runner.instance_.tRex.xPos;
+    // Runner.instance_.tRex._ducking = Runner.instance_.tRex.ducking;
+    // // overwrite with accessor
+    // Object.defineProperty(Runner.instance_.tRex, 'xPos', {
+    //     get: function () {
+    //         return Runner.instance_.tRex._xPos;
+    //     },
+
+    //     set: function (value) {
+    //         debugger; // sets breakpoint
+    //         Runner.instance_.tRex._xPos = value;
+    //     }
+    // });
+    // Object.defineProperty(Runner.instance_.tRex, 'ducking', {
+    //     get: function () {
+    //         return Runner.instance_.tRex._ducking;
+    //     },
+
+    //     set: function (value) {
+    //         debugger; // sets breakpoint
+    //         Runner.instance_.tRex._ducking = value;
+    //     }
+    // });
 };
 
 function setSimulationSPF(SPF) {
@@ -2795,7 +2820,7 @@ setAgent.agents = {
     DEEPQNET: 4
 };
 
-function setAgent(agent) {
+function setAgent(agent, type) {
     var agent_panel = document.getElementById("agent-panel");
     switch (agent) {
         case setAgent.agents.HUMAN:
@@ -2804,11 +2829,16 @@ function setAgent(agent) {
             break;
         case setAgent.agents.QLEARNER:
             agent_panel.innerHTML = "Q-Table";
-            Runner.instance_.brain = new QLearner(QLearner.types.SingleObstacleXHeight);
+            Runner.instance_.brain = new QLearner(type);
             break;
         case setAgent.agents.DEEPQNET:
             agent_panel.innerHTML = "Deep-Q-Net";
-            Runner.instance_.brain = new DeepQLearner(Runner.instance_.dimensions, document.getElementById("leaner-show"));
+            Runner.instance_.brain = new DeepQLearner(
+                Runner.instance_.dimensions,
+                document.getElementById("leaner-show"),
+                // DeepQLearner.type.SingleObstacleXWidth
+                type
+            );
             break;
         case setAgent.agents.HANDCRAFT:
         default:
@@ -2834,7 +2864,7 @@ function handleFileSelect(evt) {
     }
     var file = evt.target.files[0];
     var reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         var model = reader.result;
         console.log(model.length);
         var feedback = Runner.instance_.brain.load(model);
@@ -2854,5 +2884,6 @@ function loadModel() {
         alert('The File APIs are not fully supported in this browser.');
     }
 };
+
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);
