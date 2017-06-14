@@ -188,7 +188,7 @@ var deepqlearn = deepqlearn || { REVISION: 'ALPHA' };
         if (this.learning) {
           // compute epsilon for the epsilon-greedy policy
           this.epsilon = Math.min(1.0, Math.max(this.epsilon_min, 
-            1.0 - (this.age - this.learning_steps_burnin) / (100000/*this.learning_steps_total*/ - this.learning_steps_burnin)));
+            1.0 - (this.age - this.learning_steps_burnin) / (this.learning_steps_total * 0.9 - this.learning_steps_burnin)));
         } else {
           this.epsilon = this.epsilon_test_time; // use test-time value
         }

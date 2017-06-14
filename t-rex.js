@@ -606,6 +606,7 @@
                         this.currentSpeed += this.config.ACCELERATION;
                     }
                 } else {
+                    console.log("distanceRan: %d", this.distanceMeter.getActualDistance(this.distanceRan));
                     this.gameOver();
                     this.restart();
                 }
