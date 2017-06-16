@@ -105,7 +105,7 @@ QLearner.types = {
     SingleObstacleXYW: {
         type: "singleObstacleXYW",
         total_iters: 300000,
-        states: 100 * 10 * 10 * 100 + 1,
+        states: 100 * 10 * 100 + 1,
         actions: 2,
         alpha: 0.7,
         gamma: 1.0,
@@ -123,14 +123,14 @@ QLearner.types = {
                 return 0;
             }
             var obstacle = runner.horizon.obstacles[0];
-
-            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 50, 0, 49);
+            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 30, 0, 29);
             var obstacleHeight = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
             var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
+            
             var tRexHeight = quantify(100 - runner.tRex.yPos, 100, 10, 0, 9);
-            var speed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 20, 0, 19);
+            var speed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 10, 0, 9);
 
-            var state = 10000 * speed + 1000 * tRexHeight + 100 * obstacleHeight + x + 1;
+            var state = 1000 * speed + 100 * obstacleHeight + x + 1;
 
             //var state = x + 50 * y + 500 * w + 5000 * speed + 1;
             // var state = speed * 1000 + y * 100 + w * 10 + x + 1;
@@ -166,7 +166,7 @@ QLearner.prototype = {
                 // just hit an obstacle, update the table, reset states
                 this.update_(this.prev_ground_res.state, this.prev_ground_res.action, reward, state);
                 this.iter++;
-
+ 
                 this.prev_ground_res = QLearner.initialResult;
                 this.history = QLearner.initialResult;
             } else {
