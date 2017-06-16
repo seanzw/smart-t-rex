@@ -67,8 +67,8 @@ QLearner.types = {
      */
     SingleObstacleX: {
         type: "singleObstacleX",
-        total_iters: 1000,
-        states: 21,
+        total_iters: 100000,
+        states: 51,
         actions: 2,
         alpha: 0.7,
         gamma: 1.0,
@@ -80,16 +80,16 @@ QLearner.types = {
         get_state: function (runner) {
             if (runner.horizon.obstacles.length == 0) {
                 // There is no obstacles.
-                return 20;
+                return 0;
             }
             var obstacle = runner.horizon.obstacles[0];
-            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
+            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 50, 0, 49);
             // var y = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
             // var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
             // var h = quantify(obstacle.typeConfig.height, runner.dimensions.HEIGHT / 4, 10, 0, 9);
             // var state = w * 1000 + h * 100 + y * 10 + x + 1;
             // var state = y * 100 + w * 10 + x + 1;
-            var state = x;
+            var state = x + 1;
             return state;
         }
     },
@@ -104,11 +104,14 @@ QLearner.types = {
      */
     SingleObstacleXYW: {
         type: "singleObstacleXYW",
-        total_iters: 3000,
-        states: 1001,
+        total_iters: 300000,
+        states: 100 * 10 * 10 * 100 + 1,
         actions: 2,
         alpha: 0.7,
         gamma: 1.0,
+
+        buffer_size: 50,
+
         /**
          * Get the encoding of the current state.
          * Return state in [0, states)
@@ -117,17 +120,29 @@ QLearner.types = {
         get_state: function (runner) {
             if (runner.horizon.obstacles.length == 0) {
                 // There is no obstacles.
-                return 1000;
+                return 0;
             }
             var obstacle = runner.horizon.obstacles[0];
-            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 10, 0, 9);
-            var y = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
+
+            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 50, 0, 49);
+            var obstacleHeight = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
             var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
-            var state = y * 100 + w * 10 + x + 1;
+            var tRexHeight = quantify(100 - runner.tRex.yPos, 100, 10, 0, 9);
+            var speed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 20, 0, 19);
+
+            var state = 10000 * speed + 1000 * tRexHeight + 100 * obstacleHeight + x + 1;
+
+            //var state = x + 50 * y + 500 * w + 5000 * speed + 1;
+            // var state = speed * 1000 + y * 100 + w * 10 + x + 1;
             return state;
         }
     }
 };
+
+QLearner.initialResult = {
+    action: QLearner.actions.NOTHING,
+    state: 0
+}
 
 QLearner.prototype = {
 
@@ -142,12 +157,52 @@ QLearner.prototype = {
             state: state,
             action: action
         };
+        
         // Update the Q table if we are still learning.
-        if (this.iter < this.type.total_iters && (this.history.state != state || reward < 0)) {
-            this.update_(this.history.state, this.history.action, reward, state);
-            this.iter++;
+        // if (this.iter < this.type.total_iters && (this.history.state != state || reward < 0)) {
+        if (this.history.state != state || reward < 0) {
+            // the state has changed or the collision happened
+            if(reward < 0) {
+                // just hit an obstacle, update the table, reset states
+                this.update_(this.prev_ground_res.state, this.prev_ground_res.action, reward, state);
+                this.iter++;
+
+                this.prev_ground_res = QLearner.initialResult;
+                this.history = QLearner.initialResult;
+            } else {
+                if( runner.tRex.jumping ) {
+                    // change the state without updating the table
+                    this.history = result;
+                } else {
+                    // check if it just landed
+                    if(this.history != this.prev_ground_res) {
+                        reward = 1;
+                    }
+
+                    this.update_(this.prev_ground_res.state, this.prev_ground_res.action, reward, state);
+                    this.iter++;
+
+                    this.history = result;
+                    this.prev_ground_res = result;
+                }
+            }
             document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;
-            this.history = result;
+
+            
+            for(var i = 0; i < this.type.buffer_size - 1; i++) {
+                this.buffer_actions[this.type.buffer_size - i - 1] = this.buffer_actions[this.type.buffer_size - i - 2]
+                this.buffer_states[this.type.buffer_size - i - 1] = this.buffer_states[this.type.buffer_size - i - 2];
+            }
+            this.buffer_actions[0] = action;
+            this.buffer_states[0]  = state;
+  
+            if (reward < 0) {
+                history_series = "";
+                for(var i = 0; i < this.type.buffer_size; i++) {
+                    history_series += " (" + this.buffer_states[this.type.buffer_size - i - 1] + "," + this.buffer_actions[this.type.buffer_size - i - 1] + ")"
+                }
+                console.log(history_series);
+            }
         }
         return result;
     },
@@ -206,10 +261,17 @@ QLearner.prototype = {
                 this.table[i][j] = 0.0;
             }
         }
-        this.history = {
-            action: QLearner.actions.NOTHING,
-            state: 0
-        };
+
+        this.buffer_actions = new Array(this.type.buffer_size);
+        this.buffer_states  = new Array(this.type.buffer_size);
+        for(var i = 0; i < this.type.buffer_size; i++) {
+            this.buffer_actions[i] = 0;
+            this.buffer_states[i] = 0;
+        }
+
+        this.history = QLearner.initialResult;
+        this.prev_ground_res = QLearner.initialResult;
+        
         // Restart the training.
         this.iter = 0;
         return true;
@@ -248,10 +310,26 @@ QLearner.prototype = {
         if (r >= 0) {
             r += this.type.gamma * this.estimate_(next_state);
         }
+
+        var before = this.table[state][action];
+
         this.table[state][action] += this.type.alpha *
             (r - this.table[state][action]);
+            
+        if(reward < 0) {
+            console.log(state + " " + action + " " + reward + " " + next_state);
+            console.log("table[%d][%d] %f -> %f", state, action, before, this.table[state][action]);
+        }
     }
 };
+
+function printTable() {
+    table = Runner.instance_.brain.table;
+    console.log(Runner.instance_.tRex.jumping + " " + Runner.instance_.tRex.yPos + " " + Runner.instance_.tRex.jumpVelocity);
+    for (var i = 1; i <= 10; i++) {
+        //console.log("table[%d] NO: %f JUMP: %f", i, table[i][0], table[i][1]);
+    }
+}
 
 // This is a hand craft AI.
 function HandCraftAI() {

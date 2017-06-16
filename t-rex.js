@@ -576,7 +576,7 @@
                 this.tRex.update(deltaTime);
                 var reward = obstaclesJumpedDelta;
                 if (collision) {
-                    reward = -1;
+                    reward = -1000;
                 }
                 if (true) {
                     var result = this.brain.act(this, reward);
@@ -606,7 +606,11 @@
                         this.currentSpeed += this.config.ACCELERATION;
                     }
                 } else {
-                    console.log("distanceRan: %d", this.distanceMeter.getActualDistance(this.distanceRan));
+                    console.log("distanceRan: %d Speed: %f SpeedOffset: %f", 
+                        this.distanceMeter.getActualDistance(this.distanceRan), 
+                        this.currentSpeed, 
+                        this.horizon.obstacles[0].speedOffset);
+                    
                     this.gameOver();
                     this.restart();
                 }
@@ -1458,7 +1462,8 @@
                 var minGap = Math.round(this.width * speed +
                     this.typeConfig.minGap * gapCoefficient);
                 var maxGap = Math.round(minGap * Obstacle.MAX_GAP_COEFFICIENT);
-                // return minGap;
+                
+                //return minGap;
                 return getRandomNum(minGap, maxGap);
             },
 
