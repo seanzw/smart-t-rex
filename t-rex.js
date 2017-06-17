@@ -606,6 +606,10 @@
                         this.currentSpeed += this.config.ACCELERATION;
                     }
                 } else {
+                    
+                    
+                    this.brain.appendResult(this.distanceMeter.getActualDistance(this.distanceRan));
+
                     console.log("distanceRan: %d Speed: %f SpeedOffset: %f", 
                         this.distanceMeter.getActualDistance(this.distanceRan), 
                         this.currentSpeed, 
@@ -2858,6 +2862,17 @@ function saveModel() {
     var model = Runner.instance_.brain.dump();
     if (model == null) {
         window.alert("There is no model for this agent");
+        return;
+    }
+    var blob = new Blob([model.text], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, model.fn);
+};
+
+
+function saveResult() {
+    var model = Runner.instance_.brain.dumpResult();
+    if (model == null) {
+        window.alert("There is no result for this agent");
         return;
     }
     var blob = new Blob([model.text], { type: "text/plain;charset=utf-8" });
