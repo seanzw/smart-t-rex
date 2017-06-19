@@ -2906,19 +2906,29 @@ function loadModel() {
     }
 };
 
-function readRemoteFile(path) {
-    
-}
-
 function loadPretrain(agent, type) {
     var agent_panel = document.getElementById("agent-panel");
     
+    var base_url = "http://raw.githubusercontent.com/seanzw/smart-t-rex/master/";
+
     if(agent == setAgent.agents.QLEARNER) {
         var path = "";
         switch(type) {
+            case QLearner.types.SingleObstacleX:
+                agent_panel.innerHTML = "Q-Table X (Trained)";
+                path = base_url + "pretrain/QL_X/q-table.csv";
+                break;
+            case QLearner.types.SingleObstacleXH:
+                agent_panel.innerHTML = "Q-Table X+Height (Trained)";
+                path = base_url + "pretrain/QL_X_H/q-table.csv";
+                break;
+            case QLearner.types.SingleObstacleXS:
+                agent_panel.innerHTML = "Q-Table X+Speed (Trained)";
+                path = base_url + "pretrain/QL_X_V/q-table.csv";
+                break;
             case QLearner.types.SingleObstacleXHS:
-                agent_panel.innerHTML = "Q-Table XHS";
-                path = "http://raw.githubusercontent.com/seanzw/smart-t-rex/master/pretrain/QL_X_H_V/q-table.csv";
+                agent_panel.innerHTML = "Q-Table X+H+S (Trained)";
+                path = base_url + "pretrain/QL_X_H_V/q-table.csv";
                 break;
             default:
                 break;
@@ -2933,17 +2943,17 @@ function loadPretrain(agent, type) {
 
         xmlhttp.onreadystatechange= function() {
             if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-                readRemoteFile(path);
                 Runner.instance_.brain = new QLearner(type);
                 if (Runner.instance_.brain.load(xmlhttp.responseText) != true) {
                     window.alert(feedback);
                 } else {
-                    window.alert("Model loaded. Press Space to start");
+                    Runner.instance_.gameOver();
+                    Runner.instance_.restart();
                 }
             }
         }
 
-        xmlhttp.open("GET", path,true);
+        xmlhttp.open("GET", path, true);
         xmlhttp.send();
     }
     

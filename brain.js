@@ -241,8 +241,9 @@ QLearner.prototype = {
                     this.prev_ground_res = result;
                 }
             }
-            document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;  
         }
+        
+        document.getElementById("iteration-panel").innerHTML = "Training iteration: " + this.iter;  
         return result;
     },
 

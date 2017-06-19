@@ -33,6 +33,11 @@
         .navbar-toggler {
             z-index: 1;
         }
+        
+        #QLearningDropdown {
+            width: 400px;
+            height: 370px
+        }
 
         @media (max-width: 576px) {
             nav>.container {
@@ -83,19 +88,34 @@
                     </li>
                     <li class="nav-item">
                         <div class="dropdown">
-                            <a data-toggle="dropdown" class="nav-link" href="#">Q-Table</a>
-                            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+                            <a data-toggle="dropdown" class="nav-link" href="#">Q-Learning</a>
+                            <ul id = "QLearningDropdown" class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleX)">XPos</li>
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleX)">Train using XPos</li>
                                 
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXH)">XPosSpeed</li>
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXH)">Train using XPos+Speed</li>
 
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXS)">XPosHeight</li>
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXS)">Train using XPos+Height</li>
     
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXHS)">XPosHeightSpeed</li>
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXHS)">Train using XPos+Height+Speed</li>
+                                
+                                <li class="nav-link" onclick="loadPretrain(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleX)">
+                                    Load trained XPos
+                                </li>
+
+                                <li class="nav-link" onclick="loadPretrain(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXH)">
+                                    Load trained XPos+Height
+                                </li>
+                                <li class="nav-link" onclick="loadPretrain(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXS)">
+                                    Load trained XPos+Speed
+                                </li>
+                                
+                                <li class="nav-link" onclick="loadPretrain(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXHS)">
+                                    Load trained XPos+Height+Speed
+                                </li>
                             </ul>
                         </div>
                     </li>
@@ -106,13 +126,11 @@
                                 <li class="nav-link" 
                                     onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleX)">XPos</li>
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleXS)">XPosSpeed</li>
+                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleXS)">XPos+Speed</li>
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleXH)">XPosHeight</li>
+                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleXH)">XPos+Height</li>
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleXHS)">XPosHeightSpeed</li>
-                                <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.Visual)">Visual</li>
+                                    onclick="setAgent(setAgent.agents.DEEPQNET, DeepQLearner.types.SingleObstacleXHS)">XPos+Height+Speed</li>
                             </ul>
                         </div>
                     </li>
@@ -124,10 +142,6 @@
                                 <li class="nav-link" onclick="loadModel()">
                                     Load
                                     <input type="file" name="file" id="loadInput" style="visibility:hidden;display:block;width:0;height:0;">
-                                </li>
-                                
-                                <li class="nav-link" onclick="loadPretrain(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXHS)">
-                                    Load Pre-trained QL XPosHeightSpeed
                                 </li>
                             </ul>
                         </div>
