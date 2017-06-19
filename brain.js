@@ -1,6 +1,8 @@
 // A dummy human agend which always do nothing.
 // Always do nothing to let the player take control.
 function Human() {
+    this.results = [];
+    this.iteration = 0;
     return this;
 };
 
@@ -14,10 +16,14 @@ Human.prototype = {
             state: -1,
             action: QLearner.actions.NOTHING
         };
+        this.iteration = 0;
         return result;
     },
     dump: function () {
         return null;
+    },
+    isTrain: function() {
+        return false;
     },
     /**
      * Do nothing.
@@ -26,7 +32,18 @@ Human.prototype = {
      */
     load: function (model) {
         return "The model is in your mind!";
-    }
+    },
+    appendResult: function(result) {
+        this.results.push([this.iteration, result]);
+    },
+    dumpResult: function () {
+        var csvContent = "";
+        for(var i = 0; i < this.results.length; i++) {
+            dataString = this.results[i].join(",");
+            csvContent += i < this.results.length - 1 ? dataString + "\n" : dataString;
+        }
+        return { text: csvContent, fn: "result-dql.csv" };
+    },
 };
 
 function QLearner(typeConfig) {
@@ -357,6 +374,8 @@ function printTable() {
 
 // This is a hand craft AI.
 function HandCraftAI() {
+    this.results = [];
+    this.iteration = 0;
     return this;
 };
 
@@ -378,7 +397,11 @@ HandCraftAI.prototype = {
                 result.action = QLearner.actions.JUMP;
             }
         }
+        this.iteration++;
         return result;
+    },
+    isTrain: function() {
+        return false;
     },
     dump: function () {
         return null;
@@ -390,7 +413,18 @@ HandCraftAI.prototype = {
      */
     load: function (model) {
         return "Sorry no cheat sheet!";
-    }
+    },
+    appendResult: function(result) {
+        this.results.push([this.iteration, result]);
+    },
+    dumpResult: function () {
+        var csvContent = "";
+        for(var i = 0; i < this.results.length; i++) {
+            dataString = this.results[i].join(",");
+            csvContent += i < this.results.length - 1 ? dataString + "\n" : dataString;
+        }
+        return { text: csvContent, fn: "result-dql.csv" };
+    },
 };
 
 /**
@@ -432,6 +466,7 @@ function DeepQLearner(dimensions, container, type) {
     this.previous_action = 0;
 
     this.brain = null;
+    this.results = [];
     this.init(container);
     return this;
 };
@@ -484,8 +519,8 @@ DeepQLearner.types = {
             return input;
         }
     },
-    SingleObstacleTRex: {
-        num_inputs: 5,
+    SingleObstacleXS: {
+        num_inputs: 2,
         num_actions: 2,
         opt: {
             temporal_window: 0,
@@ -493,14 +528,14 @@ DeepQLearner.types = {
             experience_size: 30000,
             start_learn_threshold: 1000,
             gamma: 0.99,
-            learning_steps_total: 100000,
+            learning_steps_total: 200000,
             learning_steps_burnin: 3000,
             epsilon_min: 0.01,
             epsilon_test_time: 0.00,
             layer_defs: [
-                { type: 'input', out_sx: 1, out_sy: 1, out_depth: 5 },
-                { type: 'fc', num_neurons: 32, activation: 'relu' },
-                { type: 'fc', num_neurons: 32, activation: 'relu' },
+                { type: 'input', out_sx: 1, out_sy: 1, out_depth: 2 },
+                { type: 'fc', num_neurons: 64, activation: 'relu' },
+                { type: 'fc', num_neurons: 64, activation: 'relu' },
                 { type: 'regression', num_neurons: 2 }
             ],
             tdtrainer_options: {
@@ -512,22 +547,101 @@ DeepQLearner.types = {
             random_action_distribution: [0.8, 0.2]
         },
         getInput: function (runner, brain) {
-            var input = new Array(5);
+            var input = new Array(2);
             if (runner.horizon.obstacles.length > 0) {
                 // Update the obstacles.
                 var obstacle = runner.horizon.obstacles[0];
-                input[0] = (obstacle.xPos) / runner.dimensions.WIDTH;
-                input[1] = (obstacle.yPos) / runner.dimensions.HEIGHT;
-                input[2] = (obstacle.width) / runner.dimensions.WIDTH;
+                input[0] = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
+                input[1] = (runner.currentSpeed - 6 + obstacle.speedOffset) / 8.0;
+            } else {
+                input[0] = 1;
+                input[1] = 0;
+            }
+            return input;
+        }
+    },
+
+    SingleObstacleXH: {
+        num_inputs: 2,
+        num_actions: 2,
+        opt: {
+            temporal_window: 0,
+            target_update_iteration: 5000,
+            experience_size: 30000,
+            start_learn_threshold: 1000,
+            gamma: 0.99,
+            learning_steps_total: 200000,
+            learning_steps_burnin: 3000,
+            epsilon_min: 0.01,
+            epsilon_test_time: 0.00,
+            layer_defs: [
+                { type: 'input', out_sx: 1, out_sy: 1, out_depth: 2 },
+                { type: 'fc', num_neurons: 64, activation: 'relu' },
+                { type: 'fc', num_neurons: 64, activation: 'relu' },
+                { type: 'regression', num_neurons: 2 }
+            ],
+            tdtrainer_options: {
+                learning_rate: 0.001,
+                momentum: 0.0,
+                batch_size: 64,
+                l2_decay: 0.01
+            },
+            random_action_distribution: [0.8, 0.2]
+        },
+        getInput: function (runner, brain) {
+            var input = new Array(2);
+            if (runner.horizon.obstacles.length > 0) {
+                // Update the obstacles.
+                var obstacle = runner.horizon.obstacles[0];
+                input[0] = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
+                input[1] = (100 - runner.tRex.yPos) / 100.0;
             } else {
                 input[0] = 1;
                 input[1] = 1;
-                input[2] = 1;
             }
-            input[3] = runner.tRex.yPos / runner.dimensions.HEIGHT;
-            input[4] = runner.tRex.jumpVelocity;
-            if (runner.tRex.speedDrop) {
-                input[4] *= runner.tRex.config.SPEED_DROP_COEFFICIENT;
+            return input;
+        }
+    },
+
+    SingleObstacleXHS: {
+        num_inputs: 3,
+        num_actions: 2,
+        opt: {
+            temporal_window: 0,
+            target_update_iteration: 5000,
+            experience_size: 30000,
+            start_learn_threshold: 1000,
+            gamma: 0.99,
+            learning_steps_total: 200000,
+            learning_steps_burnin: 3000,
+            epsilon_min: 0.01,
+            epsilon_test_time: 0.00,
+            layer_defs: [
+                { type: 'input', out_sx: 1, out_sy: 1, out_depth: 3 },
+                { type: 'fc', num_neurons: 64, activation: 'relu' },
+                { type: 'fc', num_neurons: 64, activation: 'relu' },
+                { type: 'regression', num_neurons: 2 }
+            ],
+            tdtrainer_options: {
+                learning_rate: 0.001,
+                momentum: 0.0,
+                batch_size: 64,
+                l2_decay: 0.01
+            },
+            random_action_distribution: [0.8, 0.2]
+        },
+        getInput: function (runner, brain) {
+            var input = new Array(3);
+            if (runner.horizon.obstacles.length > 0) {
+                // Update the obstacles.
+                var obstacle = runner.horizon.obstacles[0];
+                input[0] = (obstacle.xPos + obstacle.width) / runner.dimensions.WIDTH;
+                input[1] = (100 - runner.tRex.yPos) / 100.0;
+                input[2] = (runner.currentSpeed - 6 + obstacle.speedOffset) / 8.0;
+            } else {
+                input[0] = 1;
+                input[1] = 1;
+                input[2] = 0;
             }
             return input;
         }
@@ -619,9 +733,10 @@ DeepQLearner.prototype = {
     act: function (runner, reward) {
 
         // Get the action.
-        // Update for every 3 frames. Otherwise, do nothing.
+        // Update for every 6 frames. Otherwise, do nothing.
+        // After training take action for each frame.
         var action = 0;
-        if (this.frames % 6 == 0 || reward < 0) {
+        if (this.frames % 6 == 0 || reward < 0 || !this.isTrain()) {
             // Notice that this is the reward for previous decision.
             if (this.iteration <= this.type.opt.learning_steps_total) {
                 this.brain.backward(reward);
@@ -667,6 +782,11 @@ DeepQLearner.prototype = {
         };
     },
 
+    isTrain: function() {
+        return this.iteration < this.type.opt.learning_steps_total;
+        // return false;
+    },
+
     dump: function () {
         return {
             text: JSON.stringify(this.brain.value_net.toJSON()),
@@ -683,5 +803,17 @@ DeepQLearner.prototype = {
         this.brain.value_net.fromJSON(JSON.parse(model));
         this.brain.learning = false;
         return true;
+    },
+
+    appendResult: function(result) {
+        this.results.push([this.iteration, result]);
+    },
+    dumpResult: function () {
+        var csvContent = "";
+        for(var i = 0; i < this.results.length; i++) {
+            dataString = this.results[i].join(",");
+            csvContent += i < this.results.length - 1 ? dataString + "\n" : dataString;
+        }
+        return { text: csvContent, fn: "result-dql.csv" };
     },
 };
