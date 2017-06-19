@@ -105,7 +105,7 @@ QLearner.types = {
     SingleObstacleXYW: {
         type: "singleObstacleXYW",
         total_iters: 100000,
-        states: 20 + 1,
+        states: 1000 + 1,
         actions: 2,
         alpha: 0.7,
         gamma: 1.0,
@@ -126,11 +126,10 @@ QLearner.types = {
             //var obstacleHeight = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
             //var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
             //var tRexHeight = quantify(100 - runner.tRex.yPos, 100, 10, 0, 9);
-            //var speed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 10, 0, 9);
+            var speed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 10, 0, 9);
 
-            //var state = 100 * speed + 10 * obstacleHeight + x + 1;
-
-            var state = x + 1;
+            var state = 100 * speed + x + 1;
+            //var state = x + 1;
             return state;
         }
     }
