@@ -62,6 +62,13 @@ QLearner.actions = {
     DUCK: 2
 };
 
+QLearner.buffer_size = 50;
+QLearner.result_max_size = 10000;
+QLearner.initialResult = {
+    action: QLearner.actions.NOTHING,
+    state: 0
+}
+
 function clamp(x, a, b) {
     return Math.min(Math.max(x, a), b);
 };
@@ -74,18 +81,13 @@ function quantify(x, divider, timer, a, b) {
 
 QLearner.types = {
     /**
-     * This Q-Learner only uses the information of the first obstacle.
-     * It contains four numbers:
-     * xPos: divided by the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
-     * yPos: divided by the canvas height and quantified at 0.1 step.
-     * width: divided by HALF the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
-     * height:
-     * Notice that the last state is used for no obstacles.
+     * This Q-Learner uses the position information of the first obstacle.
+     * Notice that state 0 is used for no obstacles.
      */
     SingleObstacleX: {
         type: "singleObstacleX",
         total_iters: 100000,
-        states: 51,
+        states: 21,
         actions: 2,
         alpha: 0.7,
         gamma: 1.0,
@@ -100,34 +102,24 @@ QLearner.types = {
                 return 0;
             }
             var obstacle = runner.horizon.obstacles[0];
-            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 50, 0, 49);
-            // var y = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
-            // var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
-            // var h = quantify(obstacle.typeConfig.height, runner.dimensions.HEIGHT / 4, 10, 0, 9);
-            // var state = w * 1000 + h * 100 + y * 10 + x + 1;
-            // var state = y * 100 + w * 10 + x + 1;
-            var state = x + 1;
+            
+            var obstaclePosition = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
+            var state = obstaclePosition + 1;
             return state;
         }
     },
+
     /**
-     * This Q-Learner only uses the information of the first obstacle.
-     * It contains four numbers:
-     * xPos: divided by the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
-     * yPos: divided by the canvas height and quantified at 0.1 step.
-     * width: divided by HALF the canvas length and quantified at 0.1 step from 0 to 1 (excluded).
-     * height:
+     * This Q-Learner uses the position and height information of the first obstacle.
      * Notice that state 0 is used for no obstacles.
      */
-    SingleObstacleXYW: {
-        type: "singleObstacleXYW",
+    SingleObstacleXH: {
+        type: "singleObstacleXH",
         total_iters: 100000,
-        states: 1000 + 1,
+        states: 1001,
         actions: 2,
         alpha: 0.7,
         gamma: 1.0,
-        buffer_size: 50,
-        result_max_size: 10000,
         /**
          * Get the encoding of the current state.
          * Return state in [0, states)
@@ -139,26 +131,77 @@ QLearner.types = {
                 return 0;
             }
             var obstacle = runner.horizon.obstacles[0];
-            var x = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
-            //var obstacleHeight = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
-            //var w = quantify(obstacle.width, runner.dimensions.WIDTH / 4, 10, 0, 9);
-            //var tRexHeight = quantify(100 - runner.tRex.yPos, 100, 10, 0, 9);
-            var speed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 10, 0, 9);
+            var obstaclePosition = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
+            var obstacleHeight = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
+            var state = 100 * obstacleHeight + obstaclePosition + 1;
+            return state;
+        }
+    },
 
-            var state = 100 * speed + x + 1;
-            //var state = x + 1;
+    /**
+     * This Q-Learner uses the position and speed information of the first obstacle.
+     * Notice that state 0 is used for no obstacles.
+     */
+
+    SingleObstacleXS: {
+        type: "singleObstacleXS",
+        total_iters: 100000,
+        states: 1001,
+        actions: 2,
+        alpha: 0.7,
+        gamma: 1.0,
+        /**
+         * Get the encoding of the current state.
+         * Return state in [0, states)
+         * @return {int}
+         */
+        get_state: function (runner) {
+            if (runner.horizon.obstacles.length == 0) {
+                // There is no obstacles.
+                return 0;
+            }
+            var obstacle = runner.horizon.obstacles[0];
+
+            var obstaclePosition = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
+            var obstacleRelativeSpeed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 10, 0, 9);
+            var state = 100 * obstacleRelativeSpeed + obstaclePosition + 1;
+            return state;
+        }
+    },
+
+    /**
+     * This Q-Learner uses the position, height, and speed information of the first obstacle.
+     * Notice that state 0 is used for no obstacles.
+     */
+    SingleObstacleXHS: {
+        type: "singleObstacleXHS",
+        total_iters: 100000,
+        states: 10001,
+        actions: 2,
+        alpha: 0.7,
+        gamma: 1.0,
+        /**
+         * Get the encoding of the current state.
+         * Return state in [0, states)
+         * @return {int}
+         */
+        get_state: function (runner) {
+            if (runner.horizon.obstacles.length == 0) {
+                // There is no obstacles.
+                return 0;
+            }
+            var obstacle = runner.horizon.obstacles[0];
+
+            var obstaclePosition = quantify(obstacle.xPos, runner.dimensions.WIDTH, 20, 0, 19);
+            var obstacleHeight = quantify(obstacle.yPos, runner.dimensions.HEIGHT, 10, 0, 9);
+            var obstacleRelativeSpeed = quantify(runner.currentSpeed - 6 + obstacle.speedOffset, 8, 10, 0, 9);
+            var state = 1000 * obstacleRelativeSpeed + 100 * obstacleHeight + obstaclePosition + 1;
             return state;
         }
     }
 };
 
-QLearner.initialResult = {
-    action: QLearner.actions.NOTHING,
-    state: 0
-}
-
 QLearner.prototype = {
-
     /**
      * Take the best action according to the current state.
      * @return {state: int, action: string}
@@ -172,7 +215,6 @@ QLearner.prototype = {
         };
         
         // Update the Q table if we are still learning.
-        // if (this.iter < this.type.total_iters && (this.history.state != state || reward < 0)) {
         if ( this.iter < this.type.total_iters && (this.history.state != state || reward < 0)) {
             // the state has changed or the collision happened
             if(reward < 0) {
@@ -199,23 +241,7 @@ QLearner.prototype = {
                     this.prev_ground_res = result;
                 }
             }
-            document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;
-
-            
-            for(var i = 0; i < this.type.buffer_size - 1; i++) {
-                this.buffer_actions[this.type.buffer_size - i - 1] = this.buffer_actions[this.type.buffer_size - i - 2]
-                this.buffer_states[this.type.buffer_size - i - 1] = this.buffer_states[this.type.buffer_size - i - 2];
-            }
-            this.buffer_actions[0] = action;
-            this.buffer_states[0]  = state;
-  
-            if (reward < 0) {
-                history_series = "";
-                for(var i = 0; i < this.type.buffer_size; i++) {
-                    history_series += " (" + this.buffer_states[this.type.buffer_size - i - 1] + "," + this.buffer_actions[this.type.buffer_size - i - 1] + ")"
-                }
-                console.log(history_series);
-            }
+            document.getElementById("iteration-panel").innerHTML = "iteration: " + this.iter;  
         }
         return result;
     },
@@ -243,7 +269,7 @@ QLearner.prototype = {
      * @return {string}
      */
     dumpResult: function () {
-        var csvContent = "";
+        var csvContent = "Iterations, Distance\n";
         for(var i = 0; i < this.gameNumber; i++) {
             dataString = this.resultTable[i].join(",");
             csvContent += i < this.gameNumber - 1 ? dataString + "\n" : dataString;
@@ -295,19 +321,12 @@ QLearner.prototype = {
         }
 
         this.gameNumber = 0;
-        this.resultTable = new Array(this.type.result_max_size);
-        for (var i = 0; i < this.type.result_max_size; ++i) {
+        this.resultTable = new Array(QLearner.result_max_size);
+        for (var i = 0; i < QLearner.result_max_size; ++i) {
             this.resultTable[i] = new Array(2);
             for (var j = 0; j < 2; ++j) {
                 this.resultTable[i][j] = 0;
             }
-        }
-
-        this.buffer_actions = new Array(this.type.buffer_size);
-        this.buffer_states  = new Array(this.type.buffer_size);
-        for(var i = 0; i < this.type.buffer_size; i++) {
-            this.buffer_actions[i] = 0;
-            this.buffer_states[i] = 0;
         }
 
         this.history = QLearner.initialResult;

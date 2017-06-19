@@ -2906,5 +2906,43 @@ function loadModel() {
     }
 };
 
+function readRemoteFile(path) {
+    var xmlhttp;
+
+    if(window.XMLHttpRequest) {
+        xmlhttp=new XMLHttpRequest();
+    }
+    else {
+        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+    }
+
+    xmlhttp.onreadystatechange=function() {
+        if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+            alert(xmlhttp.responseText);
+        }
+    }
+
+    xmlhttp.open("GET", path,true);
+    xmlhttp.send();
+}
+
+function loadPretrain(agent, type) {
+    var agent_panel = document.getElementById("agent-panel");
+    
+    if(agent == setAgent.agents.QLEARNER) {
+        var path = "";
+        switch(type) {
+            case QLearner.types.SingleObstacleXHS:
+                agent_panel.innerHTML = "Q-Table XHS";
+                path = "pretrain/QL_X_H_V/q-table.csv";
+                break;
+            default:
+                break;
+        }
+        readRemoteFile();
+        Runner.instance_.brain = new QLearner(type);
+    }
+    
+}
 
 document.addEventListener('DOMContentLoaded', onDocumentLoad);

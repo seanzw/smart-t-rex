@@ -87,8 +87,15 @@
                             <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                                 <li class="nav-link" 
                                     onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleX)">XPos</li>
+                                
                                 <li class="nav-link" 
-                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXYW)">XYPos+W</li>
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXH)">XPosSpeed</li>
+
+                                <li class="nav-link" 
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXS)">XPosHeight</li>
+    
+                                <li class="nav-link" 
+                                    onclick="setAgent(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXHS)">XPosHeightSpeed</li>
                             </ul>
                         </div>
                     </li>
@@ -117,6 +124,10 @@
                                 <li class="nav-link" onclick="loadModel()">
                                     Load
                                     <input type="file" name="file" id="loadInput" style="visibility:hidden;display:block;width:0;height:0;">
+                                </li>
+                                
+                                <li class="nav-link" onclick="loadPretrain(setAgent.agents.QLEARNER, QLearner.types.SingleObstacleXHS)">
+                                    Load Pre-trained QL XPosHeightSpeed
                                 </li>
                             </ul>
                         </div>
