@@ -100,7 +100,7 @@
 
 % *** CITATION PACKAGES ***
 %
-%\usepackage{cite}
+% \usepackage{cite}
 % cite.sty was written by Donald Arseneau
 % V1.6 and later of IEEEtran pre-defines the format of the cite.sty package
 % \cite{} output to follow that of IEEE. Loading the cite package will
@@ -161,7 +161,7 @@
 % You can find documentation about the pdfTeX application at:
 % http://www.tug.org/applications/pdftex
 
-
+\usepackage{hyperref}
 
 
 
@@ -259,7 +259,8 @@
 % http://www.ctan.org/tex-archive/obsolete/macros/latex/contrib/subfigure/
 % subfigure.sty has been superceeded by subfig.sty.
 
-
+\usepackage{biblatex}
+\bibliography{refs}
 
 \usepackage[caption=false]{caption}
 %\usepackage[font=footnotesize]{subfig}
@@ -424,10 +425,7 @@ Reinforcement learning, Q-learning
 
 
 \section{Introduction}
-\blindtext
 
-\subsection{Subsection Heading Here}
-\blindtext
 
 % needed in second column of first page if using \IEEEpubid
 %\IEEEpubidadjcol
@@ -555,11 +553,11 @@ Another thing that changes during the game is the running speed of the TRex. It 
 
 \section{Model}
 \subsection{Q-Learning}
-In this section we will describe the process of Q-learning in our model. 
+In this section, we will describe the process of Q-learning in our model. 
 
-\subsubsection{Bucketizing the perceptions to features}
+\subsubsection{Bucketing the perceptions to features}
 
-First we need to encode the environment, i.e. perceptions of the TRex, into several discrete states. Since the variables in the perception are floating point numbers, we use a certain number of buckets to discretize them. The bucketizing process for each variable can be described as followed.
+First, we need to encode the environment, i.e. perceptions of the TRex, into several discrete states. Since the variables in the perception are floating point numbers, we use a certain number of buckets to discretize them. The bucketing process for each variable can be described as followed.
 
 For the X position of the obstacle,
 \begin{equation}
@@ -579,7 +577,7 @@ For the relative velocity,
     \label{eq:v_bucket}
 \end{equation}
 
-CANVAS\_WIDTH and CANVAS\_HEIGHT represent the width and the height of the canvas, respectively. BUCKET denotes the bucket size for that variable. Empirically, BUCKET\_X = 20, BUCKET\_H = 10, BUCKET\_V = 10. MAX\_V and MIN\_V denote the maximal velocity and minimal velocity of the horizon, and their values are 13 and 6 respectively. \textit{Offset} is a variable denoting the speed offset of the obstacle. For an obstacle belong to the type of cactus, \textit{offset} = 0; for a pterodactyls obstacle, \textit{offset} can be either 0.8 or -0.8 with equal probability.
+$CANVAS\_WIDTH$ and $CANVAS\_HEIGHT$ represent the width and the height of the canvas, respectively. BUCKET denotes the bucket size for that variable. Empirically, ${BUCKET}_{X}$ = 20, ${BUCKET}_{{H}}$ = 10, ${BUCKET}_{{V}}$ = 10. $MAX\_V$ and $MIN\_V$ denote the maximal velocity and minimal velocity of the horizon, and their values are 13 and 6 respectively. $Offset$ is a variable denoting the speed offset of the obstacle. For an obstacle belong to the type of cactus, $offset$ = 0; for a pterodactyls-type obstacle, $offset$ can be either 0.8 or -0.8 with equal probability.
 
 Notice that bucket size is a factor worth considering. A large bucket size will result in a larger state space, which will take more iterations to train, while a small bucket size will not be sufficient to represent the environment unambiguously. 
 
@@ -589,13 +587,13 @@ In order to learn the amount of information needed to solve the game, we gradual
 \begin{enumerate}
     \item X Position 
     
-    (BUCKET\_X + 1)
-    \item X Position + Height
+    ($BUCKET_X + 1$)
+    \item X Position + Height 
+    
+    ($BUCKET_X * BUCKET_H + 1$)
+    \item X Position + Height + Velocity
 
-    (BUCKET\_X * BUCKET\_H + 1)
-    \item X Position + HEIGHT + VELOCITY 
-
-    (BUCKET\_X * BUCKET\_H * BUCKET\_V + 1)
+    ($BUCKET_X * BUCKET_H * BUCKET_V + 1$)
 \end{enumerate}
 
 \subsubsection{Ignoring some states when updating the Q-table}
@@ -604,40 +602,222 @@ In the framework of Q-learning, the agent will constantly choose an action for e
 
 \subsubsection{Reward}
 
-For a state in which the TRex collided with an obstacle, the reward was set to -1000. When the TRex is running on the horizon, the reward is 0. When the TRex jumps over an obstacle and lands on the horizon, the reward is 1.
-
+For a state in which the TRex collided with an obstacle, the reward was set to -1000. When the TRex is running on the horizon, the reward is 0. When the TRex jumps over an obstacle and lands on the horizon, the reward is 1. The default behavior for the Q-learning agent is doing nothing, which means that if two actions have the same reward for the current state, the agent will choose to stay on the horizon instead of jumping.
 
 \subsection{Deep-Q-Learning}
 We also tried Deep-Q-Learning algorithm. We use a forward neural network to approximate the Q function. 
 
 \subsubsection{Normalize Features}
-First we use the same equation as Eq.~\ref{eq:x_bucket}, Eq.~\ref{eq:h_bucket} and Eq.~\ref{eq:v_bucket} to normalize the data. Notice that for neural network the input can be a continuous value. Therefore, we do not have to bucketizing the features to discrete values, and the value for each feature is within range $[0, 1]$. For example, the X position of the first obstacle is normalized with
+First, we use the same equation as Eq.~\ref{eq:x_bucket}, Eq.~\ref{eq:h_bucket} and Eq.~\ref{eq:v_bucket} to normalize the data. Notice that for neural network the input can be a continuous value. Therefore, we do not have to bucketize the features to discrete values, and the value for each feature is within the range $[0, 1]$. For example, the X position of the first obstacle is normalized with
 \begin{equation}
     \hat{x}=\frac{x}{CANVAS\_WIDTH}
 \end{equation}
 
 \subsubsection{Training Detail}
-As mentioned above, the most challenging part for Deep-Q-Learning is that the network may not converge. Here we implement the algorithm from DeepMind. There are a few details we want to mention for training. First, the agent of Deep-Q-Learning does not make decision for each frame. Instead, it only decides whether to jump or not every 6 frames. This is to make sure that neighboring samples used for training differ from each other and make the training process more stable. 
-Another thing to notice is that as mentioned in the algorithm, we use an 
+As mentioned above, the most challenging part for Deep-Q-Learning is that the network may not converge. Here we implement the algorithm from \cite{mnih2015humanlevel}. There are a few details we want to mention for training. 
+
+First, the agent of Deep-Q-Learning does not make a decision for each frame. Instead, it only decides whether to jump or not every 6 frames. This is to make sure that neighboring samples used for training differ from each other and make the training process more stable. 
+
+Another thing to notice is that as mentioned in the algorithm, we use an experience buffer and a separate network to compute the target value for the update. The target neural network is updated every 1000 iterations.
+
+\subsubsection{Network Structure}
+We use a simple 4 layer neural network. The first layer is the input layer. The second and third layer are both fully connected layer and each contains 64 neurons. Finally, there is a regression layer which outputs the estimated Q value for each state action tuple.
+
+Notice that we have tried more complex network structure and input, e.g. CNN for pixel input, however, the whole experiment is carried out in the browser and the computation power is very limited. It takes more than 2 seconds for the browser to finish one back propagation and we have to focus on handcrafted feature with simple neural network structure rather than raw pixels.
+
+\subsubsection{Reward}
+We use a different reward than that for Q-Learning. If the TRex hits an obstacle and died, we give the agent -1 reward. If the TRex passes through an obstacle, either by jumping or doing nothing as the pterodactyl is too high, we give the agent 1 reward. Otherwise, the reward is 0.
 
 \section{Implementation}
-Hack into the codes of an extracted version of TRex.
-Front end. 
-Function of the website.
+In this section, we talk more about our implementation.
+\subsection{Framework}
+We the code extracted from Chromium \cite{TRexGame} as our basic framework. Then we modify the code so that when updating each frame, an agent can make a decision of whether jumping or not. 
+
+We introduce an interface for the communication between the engine and the agent as listed in Table~\ref{tab:api}. The most important API is act(), which takes in the engine instance and the reward of the previous decision. The agent will extract the current state from the engine and make a decision of whether jumping or not. If necessary, e.g. the agent is still learning how to play, it can use the reward and its decision history to train itself.
+
+\begin{table}[!t]
+% increase table row spacing, adjust to taste
+\renewcommand{\arraystretch}{1.3}
+% if using array.sty, it might be a good idea to tweak the value of
+% \extrarowheight as needed to properly center the text within the cells
+\caption{API of Agent}
+\label{tab:api}
+\centering
+% Some packages, such as MDW tools, offer better commands for making tables
+% than the plain LaTeX2e tabular which is used here.
+\begin{tabular}{l l l l}
+\hline
+API & Arguments & Returns & Description \\
+\hline
+act & Engine, Reward & Jump or Not & Make the decision, may train the agent.\\
+\hline
+save & / & Model & Return a serialized model to save.\\
+\hline
+load & Model & / & Load a model. \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Agents}
+Given the API, we implement four agents listed as in Table~\ref{tab:agent}. Notice that the Human agent will always do nothing so that it will not interfere the human player. The Cheat agent employs a handcrafted AI which uses the information of speed, X position, and height of the first obstacle. It is used along with human player as the baseline.
+
+\begin{table}[!t]
+% increase table row spacing, adjust to taste
+\renewcommand{\arraystretch}{1.3}
+% if using array.sty, it might be a good idea to tweak the value of
+% \extrarowheight as needed to properly center the text within the cells
+\caption{Agent Implemented}
+\label{tab:agent}
+\centering
+% Some packages, such as MDW tools, offer better commands for making tables
+% than the plain LaTeX2e tabular which is used here.
+\begin{tabular}{l l}
+\hline
+Agent & Description \\
+\hline
+Human & Always do nothing so no interference to human player.\\
+\hline
+Cheat & A carefully handcrafted AI. \\
+\hline
+Q-Table & Use Q Table to learn the game. \\
+\hline
+Deep-Q-Net & Use neural network to learn the game. \\
+\hline
+\end{tabular}
+\end{table}
+
+
+\subsection{Front End Utility}
+Fig.~\ref{fig:frontend} shows our front-end design and it supports the following functionality.
+
+\begin{enumerate}
+    \item Select Speed\\
+    The user can change the simulation speed of the engine. Currently, the engine supports two level of speed: crazy and sober. In sober mode, frames are rendered at 60 FPS, while in crazy mode the engine renders as fast as possible. Notice that this is not the running speed of the TRex and the crazy mode should only be used for training an agent.
+    \item Change Agent\\
+    The user can select different agents from the menu. For some agents, e.g. Q-Table and Deep-Q-Net agent, there are multiple models can be used. Different models utilize different features like the relative speed of the TRex and so on.
+    \item Save \& Load Model\\
+    After a long time of training, the user can also save the trained model. It is also possible to load a pre-trained model and let the agent play directly.
+    \item Save Scores\\
+    The user can also save the history scores of the current agent into a csv file. It is useful to illustrate how the agent improves its skill as training goes on.
+\end{enumerate}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{img/ui}
+\DeclareGraphicsExtensions.
+\caption{The Front End Design}
+\label{fig:frontend}
+\end{figure}
+
+
 
 \section{Result}
 
 \subsection{Q-Learning}
-    iterations needed to get a good result
-    time needed
-    max score
-    average score
-    The plot of the score increase during training. Score vs. game number
-    Behavior of the TRex with different features.
 
+\subsubsection{Experiment Setup}
+    In our experiment, each agent first went through a training process. The number of iterations in the training process for each combination of features was chosen as 100000 empirically, during which the Q-table was updated after each iteration. After training, the performances of each agent were evaluated.
+    
+\subsubsection{Training process}
+    During the training process, whenever the game was over, a game score would be recorded at the corresponding iteration. The relationship between the number of iterations and scores achieved was demonstrated in Fig.~\ref{fig:training_X} and Fig.~\ref{fig:training_X_H_S}, which corresponded to two set of features, respectively. Note that it will take more than one iteration for the game to end and generate a score. The better the agent performed, the more iterations were needed to generate a score. 
+    
+    It can be observed in Fig.~\ref{fig:training_X} that with only the position of the first obstacle, the game score fluctuated frequently during training. It once got as high as 3000 but later stabilized at around several hundred. This is a typical pattern when the information presented in the feature was not sufficient to solve the game. The key information that was missing in the feature was the velocity of the obstacle. Two scenarios in the game can have the same states but the velocity is different, which will confuse the agent. When the state spaces are small, there is no such solution or strategy that can pass all scenarios of obstacles. In this case, the strategy for the agent might not converge and the performance will fluctuate frequently.
+    
+    A relatively more robust learning curve can be observed in Fig.~\ref{fig:training_X_H_S}. With the information of relative velocity of the obstacle, the agents can learn how to act differently when the speed is different. At the same time, the score also grew more slowly due to an enlarged states space.
+
+
+\subsubsection{Training Pattern}
+    A typical training pattern for Q-learning agents can be described as followed. Initially, due to the default behavior of not jumping, the TRex will directly run into the obstacle. The crash state can be denoted as ${S}_{\textnormal{0}}$, and its previous state can be denoted as ${S}_{\textnormal{1}}$. When the collision happens, not jumping at ${S}_{\textnormal{1}}$ will be given a penalty, so that next time agent will choose to jump at ${S}_{\textnormal{1}}$. Now the agent is able to pass one obstacle, but it is jumping very close to obstacle. It will not change its strategy until two consecutive obstacles come up so that the agent finds it impossible to pass the second obstacle. Therefore, both jumping and not jumping at ${S}_{\textnormal{1}}$ are also given a penalty. The agent will try to avoid ${S}_{\textnormal{1}}$, and choose to jump at a previous state, say ${S}_{\textnormal{2}}$, and so on so forth.
+    
+    The difficult part of the game is when consecutive obstacles come up with a very small gap. Following this pattern, the Q-learning agent was able to learn the ideal strategy for this game: jump as early as possible for each obstacle.
+    
+\subsubsection{Q-learning Model evaluations}
+    As shown in the result Table~\ref{tab:scores}, the score for Q-learning agents gradually increase with the introduction of more features. 
+    
+    With only the position of the obstacle, the score achieved is several hundred. After that it might be hard to deal with the increased speed. With the addition information of height, the agent can achieve a score of over one thousand. Relative velocity is a more important feature than height, as the score for the agent 'QL: Position + Velocity' is two times higher than the agent 'QL: Position + Height', which is also expected.
+    
+    The agent with all three perceptions already mastered the game and was able to achieve a performance that far exceeded human player and even the handcrafted Cheat AI, reaching as high as 590494.
+
+\begin{table}[!t]
+% increase table row spacing, adjust to taste
+\renewcommand{\arraystretch}{1.3}
+% if using array.sty, it might be a good idea to tweak the value of
+% \extrarowheight as needed to properly center the text within the cells
+\caption{Score achieved for Each Agent}
+\label{tab:scores}
+\centering
+% Some packages, such as MDW tools, offer better commands for making tables
+% than the plain LaTeX2e tabular which is used here.
+\begin{tabular}{l c c c c}
+\hline
+Agent & \# Iters & Max & Min & Average\\
+\hline
+Human & / & 4016 & 613 & 2031 \\
+\hline
+Keep Jumping & / & 21 & 21 & 21 \\
+\hline
+Random Action & / & 40 & 21 & 25 \\
+\hline
+Cheat & / & 62207 & 6058 & 22364 \\
+\hline
+QL: Position & 100000 & 945 & 361 & 580 \\
+\hline
+QL: Position + Height & 100000 & 1860 & 361 & 1163 \\
+\hline
+QL: Position + Velocity & 100000  & 8447 & 471 & 2075 \\
+\hline
+QL: Position + Height + Velocity & 100000  & 590494 & 717 & 159450 \\
+\hline
+DQL: Position & 100000 & 2033 & 745 & 1320 \\
+\hline
+DQL: Position + Height & 200000 & 180 & 32 & 105 \\
+\hline
+DQL: Position + Velocity & 200000  & 206 & 53 & 130 \\
+\hline
+DQL: Position + Height + Velocity & 200000  & 102 & 22 & 67 \\
+\hline
+\end{tabular}
+\end{table}
+
+
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{img/training_X}
+\DeclareGraphicsExtensions.
+\caption{Training with position}
+\label{fig:training_X}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{img/training_X_H_S}
+\DeclareGraphicsExtensions.
+\caption{Training with position, height, velocity}
+\label{fig:training_X_H_S}
+\end{figure}
+
+\subsection{Deep-Q-Learning}
+Table~\ref{tab:scores} also shows the scores for Deep-Q-Learning models. As we expected, it is much more difficult to train neural network than traditional Q-Learning. The biggest challenge is that Deep-Q-Learning requires randomly taking actions during the training phase to explore the state space. However, with random actions, the game usually terminates with a score less than 100, and in this early phase the running speed of the TRex is very slow. As mentioned above, the speed of the TRex is very crucial for the TRex to determine when to jump.
+
+Our experiment shows that with simple X position of the first obstacles, the neural network converges well and Fig.~\ref{fig:dql-x} shows the estimated Q value for two legal actions against the X position of the first obstacle. The x axis is the distance to the first obstacle. We can see that the agent is able to learn to not jump when the obstacle is far away (as the Q value of not jumping is higher than jumping) and start jumping when it comes close. 
+
+For other Deep-Q-Learning models, additional features do not improve their performance. We think the current network structure is too simple to handle more features. However, the computation of the browser makes it not possible to train more complicate network. For example, we tried the 6 layers' CNN model introduced in \cite{mnih2015humanlevel}, and the back propagation for one mini-batch with 32 samples along takes more than 2 seconds. Also, complicate network requires more iteration to train. In \cite{mnih2015humanlevel} they used more than 35 days of gaming experience to train the model, which is impossible for our own PC.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{img/DQL-X-response}
+\DeclareGraphicsExtensions.
+\caption{Q Value of DQL-X position}
+\label{fig:dql-x}
+\end{figure}
 
 \section{Conclusion}
-Q-learning is sufficient to solve this game.
+As discussed in the training pattern section of Q-learning, the Q-learning agent was able to learn to jump as early as possible for each obstacle, allowing for more space for the next obstacle. With the position, height, and relative velocity of the first obstacle, the agent can learn the essences of the game and was able to achieve a performance that far exceeded human players. It is demonstrated again that reinforcement learning, and more specifically Q-learning, is very promising in training artificial agents in the field of game playing. 
+
+As for Deep-Q-Learning, we implemented the algorithm of DQN and trained it with different features. However, due to the limited computation power of the browser, it is not possible to use very complicate neural network, and the simplest model with only the X position of the first obstacle achieves the best result among all the Deep-Q-Learning models we have tried, but is still not as good as models from Q-Learning. We think that a more sophisticated network may be able to utilize additional features and performs better. We can try to export the game to other native platforms, e.g. Python with tensorflow as the backend to enable the usage of more complicated network structure and speed up the training phase. 
+
+You can find all the implementation at \url{https://github.com/seanzw/smart-t-rex}. There is also a runnable website at \url{https://seanzw.github.io/smart-t-rex/}.
 
 
 % if have a single appendix:
@@ -656,10 +836,8 @@ Q-learning is sufficient to solve this game.
 
 
 % use section* for acknowledgement
-\section*{Acknowledgment}
-
-
-The authors would like to thank...
+% \section*{Acknowledgment}
+% The authors would like to thank...
 
 
 % Can use something like this to put references on a page
@@ -691,13 +869,13 @@ The authors would like to thank...
 % <OR> manually copy in the resultant .bbl file
 % set second argument of \begin to the number of references
 % (used to reserve space for the reference number labels box)
-\begin{thebibliography}{1}
+% \begin{thebibliography}{1}
 
-\bibitem{IEEEhowto:kopka}
-H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
-  0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
+% \bibitem{IEEEhowto:kopka}
+% H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
+%   0.5em minus 0.4em\relax Harlow, England: Addison-Wesley, 1999.
 
-\end{thebibliography}
+% \end{thebibliography}
 
 % biography section
 % 
@@ -709,10 +887,11 @@ H.~Kopka and P.~W. Daly, \emph{A Guide to \LaTeX}, 3rd~ed.\hskip 1em plus
 % simpler here.)
 %\begin{biography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{mshell}}]{Michael Shell}
 % or if you just want to reserve a space for a photo:
+\printbibliography
 
-\begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{picture}}]{John Doe}
-\blindtext
-\end{IEEEbiography}
+% \begin{IEEEbiography}[{\includegraphics[width=1in,height=1.25in,clip,keepaspectratio]{picture}}]{John Doe}
+% \blindtext
+% \end{IEEEbiography}
 
 % You can push biographies down or up by placing
 % a \vfill before or after them. The appropriate
