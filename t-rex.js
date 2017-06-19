@@ -576,7 +576,7 @@
                 this.tRex.update(deltaTime);
                 var reward = obstaclesJumpedDelta;
                 if (collision) {
-                    reward = -1000;
+                    reward = -1;
                 }
                 if (true) {
                     var result = this.brain.act(this, reward);
