@@ -2907,23 +2907,7 @@ function loadModel() {
 };
 
 function readRemoteFile(path) {
-    var xmlhttp;
-
-    if(window.XMLHttpRequest) {
-        xmlhttp=new XMLHttpRequest();
-    }
-    else {
-        xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-    }
-
-    xmlhttp.onreadystatechange=function() {
-        if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-            alert(xmlhttp.responseText);
-        }
-    }
-
-    xmlhttp.open("GET", path,true);
-    xmlhttp.send();
+    
 }
 
 function loadPretrain(agent, type) {
@@ -2934,13 +2918,33 @@ function loadPretrain(agent, type) {
         switch(type) {
             case QLearner.types.SingleObstacleXHS:
                 agent_panel.innerHTML = "Q-Table XHS";
-                path = "pretrain/QL_X_H_V/q-table.csv";
+                path = "http://raw.githubusercontent.com/seanzw/smart-t-rex/master/pretrain/QL_X_H_V/q-table.csv";
                 break;
             default:
                 break;
         }
-        readRemoteFile();
-        Runner.instance_.brain = new QLearner(type);
+
+        var xmlhttp;
+        if(window.XMLHttpRequest) {
+            xmlhttp=new XMLHttpRequest();
+        } else {
+            xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+
+        xmlhttp.onreadystatechange= function() {
+            if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+                readRemoteFile(path);
+                Runner.instance_.brain = new QLearner(type);
+                if (Runner.instance_.brain.load(xmlhttp.responseText) != true) {
+                    window.alert(feedback);
+                } else {
+                    window.alert("Model loaded. Press Space to start");
+                }
+            }
+        }
+
+        xmlhttp.open("GET", path,true);
+        xmlhttp.send();
     }
     
 }
